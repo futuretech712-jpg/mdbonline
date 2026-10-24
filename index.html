@@ -101,6 +101,9 @@ body.touch #callouts{bottom:auto;top:calc(var(--st) + 300px)}
 #orderTxt{position:absolute;top:calc(var(--st) + 126px);left:calc(var(--sl) + 10px);font-size:11px;letter-spacing:.1em;color:var(--ally)}
 body.touch #orderTxt{top:calc(var(--st) + 262px)}
 [hidden]{display:none!important}
+#droneHud{position:absolute;left:50%;top:calc(var(--st) + 118px);transform:translateX(-50%);background:rgba(10,30,20,.6);border:1px solid #6fe8a0;color:#bfffd8;padding:6px 12px;border-radius:6px;font:600 14px var(--hud);text-align:center;pointer-events:none}
+#droneHud .dh{font-size:11px;opacity:.8;margin-top:2px}
+body.drone #hud::after{content:'';position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px rgba(40,255,140,.25);border:2px solid rgba(111,232,160,.35)}
 .nrow{display:flex;gap:8px;align-items:center}.nrow label{min-width:44px;color:var(--muted);font-size:13px}
 .netin{flex:1;min-width:0;background:rgba(0,0,0,.25);color:var(--ink);border:1px solid var(--edge);border-radius:6px;padding:10px 12px;font:600 16px var(--hud)}
 .btn:disabled{opacity:.45;cursor:default}
@@ -227,6 +230,7 @@ table.board tr.me td{color:#ffe08a;font-weight:700}
   <div id="godTag">GOD MODE</div>
   <div id="towerBox"><div class="lbl2"><span>TORANJ</span><span id="towerTxt"></span></div><div class="bar"><div id="towerFill" style="background:var(--accent)"></div></div></div>
   <div id="notice"></div>
+  <div id="droneHud" hidden><b>DRON</b> <span id="droneT">25</span> s · <span id="droneN">2</span> granate<div class="dh">Pucaj = baci granatu · Skok / čučanj = gore / dolje · Koristi = povratak</div></div>
   <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="dot"></i><i class="ring"></i></div>
   <div id="barrel"></div>
   <div id="hit"><i></i><i></i><i></i><i></i></div>
@@ -267,10 +271,10 @@ table.board tr.me td{color:#ffe08a;font-weight:700}
     <div>
       <div class="eyebrow">Team Deathmatch · 6 na 6 · AI botovi</div>
       <h1>Me n d Boyz</h1>
-      <p class="lead" id="mapLead">Dva brda s bunkerima, rijeka s mostovima i visoki toranj u sredini koji se može srušiti. Tenkovi, džipovi, teški mitraljezi i zidovi koje možeš raznijeti ili sagraditi. Prvi tim do 50 ubojstava pobjeđuje.</p>
+      <p class="lead" id="mapLead">Dva brda s bunkerima, rijeka s mostovima i visoki toranj u sredini koji se može srušiti. Tenkovi, džipovi, dron, teški mitraljezi i zidovi koje možeš raznijeti ili sagraditi.</p>
     </div>
     <div class="sec"><div class="lbl">NAČIN IGRE</div>
-      <div class="seg" id="modeSeg"><button data-m="conq">Osvajanje baza<small>Prvi tim do 300 bodova</small></button><button data-m="tdm">Team Deathmatch<small>Prvi tim do 50 ubojstava</small></button></div>
+      <div class="seg" id="modeSeg"><button data-m="conq">Osvajanje baza<small>Prvi tim do 300 bodova</small></button><button data-m="tdm">Team Deathmatch<small>Prvi tim do 50 ubojstava</small></button><button data-m="gun">Gun Game<small>Svako ubojstvo novo oružje, zadnje je energetski mač</small></button><button data-m="meta">Lov na metu<small>Čuvaj svoju metu, ulovi njihovu</small></button></div>
     </div>
     <div class="sec"><div class="lbl">MAPA</div>
       <div class="seg" id="mapSeg"><button data-mp="village">Selo<small>Brda, rijeka, mostovi</small></button><button data-mp="port">Luka<small>Kontejneri, dizalice, brod</small></button></div>
@@ -847,7 +851,7 @@ const WEAPONS={
 const PRIMARY=['ar','smg','sg','sn','lmg','dmr','gl','asg','burst','xbow','flame','atr','sticky'], SECONDARY=['pi','rev','rpg','plasma','machete'];
 const RARE=['laser','rail','mini','sword'], NORMAL_PICK=['asg','burst','xbow','plasma','sticky','flame','atr','machete'];
 const ATTS={none:'bez dodatka',sup:'prigušivač',optic:'optika',mag:'veći spremnik',laser:'laserski nišan'};
-const EQUIP={frag:{name:'GRANATA',n:2},smoke:{name:'DIMNA',n:2},mine:{name:'MINA',n:2},shield:{name:'ŠTIT',n:1},build:{name:'GRADNJA',n:4},beacon:{name:'SIGNAL',n:1}};
+const EQUIP={frag:{name:'GRANATA',n:2},smoke:{name:'DIMNA',n:2},mine:{name:'MINA',n:2},shield:{name:'ŠTIT',n:1},build:{name:'GRADNJA',n:4},beacon:{name:'SIGNAL',n:1},drone:{name:'DRON',n:1}};
 const PRESETS=[
   {name:'Jurišnik',p:'ar',s:'pi',e:'frag'},{name:'Napadač',p:'smg',s:'rev',e:'frag'},{name:'Probojac',p:'sg',s:'pi',e:'smoke'},
   {name:'Snajperist',p:'sn',s:'rev',e:'mine'},{name:'Mitraljezac',p:'lmg',s:'pi',e:'shield'},{name:'Inženjer',p:'dmr',s:'rpg',e:'build'}];
@@ -972,7 +976,7 @@ const entH=e=>e.crouch?1.25:1.8;
 const eyeY=e=>e.pos.y+(e.crouch?1.05:1.6);
 function headP(e,v){ return v.set(e.pos.x,e.pos.y+entH(e)-0.18,e.pos.z); }
 function chestP(e,v){ return v.set(e.pos.x,e.pos.y+entH(e)*0.62,e.pos.z); }
-function aimP(t,v,head){ if(t.isVeh) return v.set(t.pos.x,t.pos.y+1.1,t.pos.z); return head?headP(t,v):chestP(t,v); }
+function aimP(t,v,head){ if(t.isDrone) return v.copy(t.pos); if(t.isVeh) return v.set(t.pos.x,t.pos.y+1.1,t.pos.z); return head?headP(t,v):chestP(t,v); }
 function newEnt(name,team,isPlayer){
   return {name,team,isPlayer,pos:new V3(),vy:0,yaw:0,pitch:0,hp:100,alive:false,kills:0,deaths:0,score:0,streak:0,slot:0,guns:[],equip:{key:'frag',n:2},
     crouch:false,onGround:true,lastHurt:-99,lastFired:-99,respawnT:0,shotT:0,reloadT:0,bloom:0,hv:new THREE.Vector2(),swapT:0,knifeT:0,veh:null,seat:null,turret:null,hid:false,
@@ -1081,7 +1085,7 @@ player=newEnt('Igrač',0,true); ents.push(player);
 ['Bager','Kumek','Švabo','Žuti','Rogo','Pljeska'].forEach(n=>ents.push(makeBot('Bot_'+n,1)));
 const curGun=e=>e.guns[e.slot];
 function giveLoad(e){ const L=e.load, p=WEAPONS[L.p], s=WEAPONS[L.s]; e.att=L.att||'none'; const pm=Math.round(p.mag*(e.att==='mag'&&!p.melee?1.5:1));
-  e.guns=[{key:p.key,mag:pm,magMax:pm,reserve:p.reserve,heat:0,att:e.att},{key:s.key,mag:s.mag,magMax:s.mag,reserve:s.reserve,heat:0,att:'none'}]; e.slot=0; e.energy=100; e.spin=0; e.burstQ=0; e.charging=0; e.burnT=0; e.slowT=0; e.armT=0; e.swingT=0; e.dash=null; e.blocking=false; e.equip={key:L.e,n:EQUIP[L.e].n}; }
+  e.guns=[{key:p.key,mag:pm,magMax:pm,reserve:p.reserve,heat:0,att:e.att},{key:s.key,mag:s.mag,magMax:s.mag,reserve:s.reserve,heat:0,att:'none'}]; e.slot=0; e.energy=100; e.spin=0; e.burstQ=0; e.charging=0; e.burnT=0; e.slowT=0; e.armT=0; e.swingT=0; e.dash=null; e.blocking=false; e.equip={key:L.e,n:EQUIP[L.e].n}; if(gameMode==='gun') ggSet(e,e.gg||0); }
 
 /* ================= turrets ================= */
 const turrets=[];
@@ -1248,7 +1252,30 @@ function randomBotLoad(e){ const pp=['ar','ar','smg','smg','sg','sn','lmg','dmr'
   if(P==='snajper') e.load.p=pk(['sn','dmr','atr','xbow']); else if(P==='lovac'){ e.load.p=pk(['atr','ar','sticky']); e.load.s='rpg'; } else if(P==='jurisnik'){ e.load.p=pk(['smg','sg','asg','flame']); if(Math.random()<0.4) e.load.s='machete'; }
   else if(P==='oprezan') e.load.p=pk(['ar','lmg','burst','dmr']); else if(P==='branitelj'){ e.load.p=pk(['lmg','ar','gl']); e.load.e=pk(['build','shield','mine']); } }
 /* ---- bases & conquest ---- */
-let gameMode='conq'; try{ gameMode=localStorage.getItem('mdb-mode')||'conq'; }catch(e){} if(gameMode!=='tdm') gameMode='conq';
+let gameMode='conq'; try{ gameMode=localStorage.getItem('mdb-mode')||'conq'; }catch(e){} if(!['tdm','gun','meta'].includes(gameMode)) gameMode='conq';
+const MODE_NAMES={conq:'Osvajanje baza',tdm:'Team Deathmatch',gun:'Gun Game',meta:'Lov na metu'};
+const GG=['ar','smg','burst','sg','lmg','dmr','asg','laser','plasma','rail','xbow','flame','mini','sn','rev','sword'];
+let VIP=null, vipMark=null, vipTick=0, ggWinner=null;
+function ggSet(e,t){ t=clamp(t,0,GG.length-1); e.gg=t; const k=GG[t], W=WEAPONS[k]; const mk=()=>({key:k,mag:W.mag,magMax:W.mag,reserve:W.reserve*2,heat:0,att:'none'});
+  e.guns=[mk(),mk()]; e.slot=0; e.reloadT=0; e.spin=0; e.charging=0; e.burstQ=0;
+  if(e.model&&!e.isPlayer) botGunLook(e); if(e===player&&state==='play') notice('RAZINA '+(t+1)+'/'+GG.length+' · '+W.name);
+  if(e.remote&&NET.role==='host'){ try{ e.remote.c.send({t:'gg',v:t}); }catch(err){} } }
+function ggBest(){ const b=[0,0]; for(const e of ents) b[e.team]=Math.max(b[e.team],(e.gg||0)+1); return b; }
+function modeScore(){ return gameMode==='conq'||gameMode==='meta'?conqPts:gameMode==='gun'?ggBest():teamScore; }
+function setVip(e){ VIP=e||null; vipTick=0; if(!vipMark){ vipMark=new THREE.Group(); const gm=new THREE.MeshBasicMaterial({color:0xffd23a});
+    const d=new THREE.Mesh(new THREE.OctahedronGeometry(0.28,0),gm); d.position.y=2.75; vipMark.add(d); vipMark.userData.d=d;
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,26,6,1,true),new THREE.MeshBasicMaterial({color:0xffd23a,transparent:true,opacity:0.35,depthWrite:false,blending:THREE.AdditiveBlending})); beam.position.y=16; vipMark.add(beam); scene.add(vipMark); }
+  vipMark.visible=!!VIP; if(VIP&&state==='play'){ notice(VIP===player?'TI SI META! PREŽIVI':(VIP.team===player.team?'NAŠA META: ':'NJIHOVA META: ')+VIP.name); tone({f0:500,f1:900,dur:0.3,vol:0.25}); } mmDirty=true; }
+function modeKill(t,att,label){
+  if(gameMode==='gun'&&att&&att!==t&&att.team!==t.team&&att.kills!==undefined&&!ggWinner){ const last=GG.length-1;
+    if((att.gg||0)>=last){ ggWinner=att; notice(att.name+' JE ZAVRŠIO GUN GAME!'); setTimeout(endRound,900); } else ggSet(att,(att.gg||0)+1);
+    if((label==='MAČETA'||label==='NOŽ'||label==='MAČ')&&(t.gg||0)>0){ t.gg--; if(t===player) notice('PONIŽEN! RAZINA NIŽE'); } }
+  if(gameMode==='meta'&&t===VIP){ let nv=(att&&att!==t&&att.team!==t.team&&att.kills!==undefined&&att.alive)?att:null;
+    if(att&&att!==t&&att.score!==undefined) att.score+=200; if(!nv){ const c=ents.filter(e=>e.team!==t.team&&e.alive); nv=c[ri(c.length)]||null; } setVip(nv); } }
+function updateMode(dt){
+  if(gameMode==='meta'&&NET.role!=='client'){ if(!VIP||(!VIP.alive&&VIP.respawnT<1)){ const c=ents.filter(e=>e.alive); if(c.length) setVip(c[ri(c.length)]); }
+    if(VIP&&VIP.alive){ vipTick+=dt; if(vipTick>=2){ vipTick-=2; conqPts[VIP.team]++; if(VIP.isPlayer||VIP.remote) VIP.score+=10; if(conqPts[0]>=150||conqPts[1]>=150) endRound(); } } }
+  if(vipMark){ vipMark.visible=gameMode==='meta'&&!!VIP&&VIP.alive; if(vipMark.visible){ vipMark.position.copy(VIP.pos); vipMark.userData.d.rotation.y+=dt*3; vipMark.children[1].visible=VIP!==player; } } }
 const BASES=[{name:'A',x:-48,z:0,r:7.5},{name:'B',x:0,z:0,r:8.5},{name:'C',x:48,z:0,r:7.5}];
 let conqPts=[0,0], conqTick=0;
 BASES.forEach(B=>{ B.y=terrainH(B.x,B.z); const fx=B.name==='B'?4.8:B.x, fz=B.name==='B'?-4.8:0; const fy=terrainH(fx,fz);
@@ -1339,8 +1366,9 @@ function resetRound(){
   resetWorld(); resetTower(); buildNav(); buildVNav(); navQ.clear(); vQ.clear(); computeSpawns();
   for(const v of vehicles) resetVehicle(v); for(const t of turrets){ t.user=null; t.heat=0; t.over=false; t.yaw=t.baseYaw; t.pitch=0; }
   for(const e of ents){ e.kills=0;e.deaths=0;e.score=0;e.streak=0; e.alive=false; e.veh=null; e.turret=null; }
-  pickAtmo(); HIST.length=0; kc=null; order={type:'free'}; roundXpBonus=0; $('killcam').hidden=true; $('orderMenu').hidden=true;
+  pickAtmo(); HIST.length=0; kc=null; ggWinner=null; for(const e of ents) e.gg=0; VIP=null; if(vipMark) vipMark.visible=false; for(const d of drones.slice()) removeDrone(d); if(myDrone) endDrone(false,true); order={type:'free'}; roundXpBonus=0; $('killcam').hidden=true; $('orderMenu').hidden=true;
   for(const e of ents) spawnEnt(e);
+  if(gameMode==='meta'){ const c=ents.filter(e=>!e.isPlayer); setVip(c[ri(c.length)]); }
   $('feed').innerHTML=''; adsT=0; input.ads=false; deathT=0; $('death').hidden=true;
 }
 
@@ -1494,7 +1522,8 @@ function traceShot(o,d,maxT,sh,ownVeh){
   const w=traceWorld(o,d,maxT); let best=w.t, ent=null, head=false, veh=null;
   for(const e of ents){ if(!e.alive||e===sh||e.team===sh.team||e.hid) continue; const r=rayEnt(o,d,e,best); if(r){best=r.t; ent=e; head=r.head;} }
   for(const v of vehicles){ if(v.dead||v===ownVeh||(sh.veh&&sh.veh===v)) continue; const t=rayVeh(o,d,v,best); if(t>=0&&t<best){ best=t; veh=v; ent=null; } }
-  return {t:best,ent,head,veh,box:(!ent&&!veh&&w.hit&&w.hit!=='ground'&&best>=w.t-1e-4)?w.hit:null,ground:w.hit==='ground'};
+  let drn=null; for(const dr of drones){ if(dr.dead||dr.team===sh.team) continue; const t=raySphere(o,d,dr.pos.x,dr.pos.y,dr.pos.z,0.45); if(t>=0&&t<best){ best=t; drn=dr; ent=null; veh=null; } }
+  return {t:best,ent,head,veh,drone:drn,box:(!ent&&!veh&&!drn&&w.hit&&w.hit!=='ground'&&best>=w.t-1e-4)?w.hit:null,ground:w.hit==='ground'};
 }
 function fireShots(sh,origin,dir,W,spreadDeg,muzzle,opt){
   opt=opt||{}; const maxT=Math.max(W.range*2.5,60);
@@ -1503,6 +1532,7 @@ function fireShots(sh,origin,dir,W,spreadDeg,muzzle,opt){
     _end.copy(origin).addScaledVector(_dir,r.t);
     if(opt.beam) tracer(muzzle,_end,0xff4040,0.07,2.4); else if(p%3===0) tracer(muzzle,_end,opt.tracerCol);
     const fall=r.t>W.range?0.55:r.t>W.range*0.6?0.8:1;
+    if(r.drone){ damageDrone(r.drone,W.dmg*fall*(opt.dmgMul||1),sh); fxSparks(_end); continue; }
     if(r.ent){ const e=r.ent; let mult=r.head?2:1, part=r.head?'head':'torso';
       if(!r.head){ if(_end.y-e.pos.y<entH(e)*0.42){ part='leg'; mult=0.85; } else { const lat=(_end.x-e.pos.x)*Math.cos(e.yaw)-(_end.z-e.pos.z)*Math.sin(e.yaw); if(Math.abs(lat)>0.2){ part='arm'; mult=0.9; } } }
       curBullet={part}; applyDamage(e,W.dmg*fall*mult*(opt.dmgMul||1),sh,opt.label||W.short,r.head,!!opt.ks); curBullet=null; if(opt.beam) for(let i=0;i<qn(3);i++) sparks.emit(_end.x,_end.y,_end.z,rnd(-2,2),rnd(0,2),rnd(-2,2),CS.laser,rnd(.1,.3),6); else fxBlood(_end); }
@@ -1533,6 +1563,7 @@ function killEnt(t,att,label,head,isKs){
   if(t.turret) leaveTurret(t);
   if(att&&att!==t&&att.kills!==undefined){ att.kills++; att.score+=100; teamScore[att.team]++; if(!isKs) att.streak++;
     if(att===player){ showPlus(); const g=player.guns[0]; g.reserve=Math.min(g.reserve+Math.ceil(WEAPONS[g.key].mag/2),WEAPONS[g.key].reserve*1.5); if(!isKs) checkStreak(); } }
+  modeKill(t,att,label);
   addFeed(att&&att.name?att:null,label,t,head);
   if(att&&!att.isPlayer&&att.model&&att!==t&&Math.random()<0.5) shout(att,['Sredio sam ga!','Jedan manje!','Pao je!'][ri(3)]);
   if(!t.isPlayer&&t.team===0&&Math.random()<0.5) shout(t,'Pao sam!',true);
@@ -1554,6 +1585,7 @@ function explode(pos,owner,label,radius,maxDmg,isKs,opt){
   for(const v of vehicles){ if(v.dead) continue; const d=Math.max(0,Math.hypot(v.pos.x-pos.x,v.pos.z-pos.z)-v.T.hx); if(d>radius) continue;
     damageVehicle(v,maxDmg*(1-d/radius)*(opt.at||1)*v.T.explF,owner,label); }
   damageBlocksRadius(pos,opt.bR||radius*0.5,opt.bD||200,owner);
+  for(const dr of drones.slice()){ const d=dr.pos.distanceTo(pos); if(d<radius) damageDrone(dr,maxDmg*(1-d/radius),owner); }
   for(const bc of beacons.slice()){ const d=bc.pos.distanceTo(pos); if(d<radius) damageBeacon(bc,maxDmg*(1-d/radius),owner); }
   if(TOWER.alive){ const td=towerDist(pos), rr=Math.min(radius,4); if(td<rr) damageTower(maxDmg*Math.pow(1-td/rr,2)*Math.min(opt.at||1,2.2)*(owner&&owner.isPlayer?1:0.45),owner,pos); }
   soundEvents.push({x:pos.x,z:pos.z,team:owner?owner.team:2,t:gTime});
@@ -1722,11 +1754,11 @@ function spawnPickup(x,y,z,kind,key,temp){ const pk={x,y,z,kind,key,rare:kind===
   pk.mesh=makePickMesh(kind==='rare'?'w':kind,key); pk.mesh.position.set(x,y,z); pickups.push(pk); return pk; }
 function resetPickups(){ for(const pk of pickups) scene.remove(pk.mesh); pickups.length=0;
   for(const d of drops) scene.remove(d.g); drops.length=0; nextDrop=gTime+rnd(90,140);
-  for(const [x,y0,z,k] of PICK_SPOTS){ const y=y0>0?y0:groundY(x,z,0.5,0.3); const key=k==='w'?NORMAL_PICK[ri(NORMAL_PICK.length)]:k==='rare'?RARE[ri(RARE.length)]:null; const pk=spawnPickup(x,y,z,k,key); pk.spot=true; } }
+  for(const [x,y0,z,k] of PICK_SPOTS){ if(gameMode==='gun'&&(k==='w'||k==='rare')) continue; const y=y0>0?y0:groundY(x,z,0.5,0.3); const key=k==='w'?NORMAL_PICK[ri(NORMAL_PICK.length)]:k==='rare'?RARE[ri(RARE.length)]:null; const pk=spawnPickup(x,y,z,k,key); pk.spot=true; } }
 function takePickup(e,pk){
   const W=WEAPONS[pk.key]; const slot=SECONDARY.includes(pk.key)?1:0; const old=e.guns[slot];
   e.guns[slot]={key:pk.key,mag:W.mag,magMax:W.mag,reserve:W.reserve,heat:0,att:'none'}; e.slot=slot; e.reloadT=0; e.swapT=0.4; e.charging=0; e.burstQ=0; e.spin=0;
-  if(old&&old.key!==pk.key) spawnPickup(e.pos.x+rnd(-0.6,0.6),groundY(e.pos.x,e.pos.z,e.pos.y+0.5,0.3),e.pos.z+rnd(-0.6,0.6),'w',old.key,true);
+  if(old&&old.key!==pk.key&&gameMode!=='gun') spawnPickup(e.pos.x+rnd(-0.6,0.6),groundY(e.pos.x,e.pos.z,e.pos.y+0.5,0.3),e.pos.z+rnd(-0.6,0.6),'w',old.key,true);
   if(pk.temp){ scene.remove(pk.mesh); pickups.splice(pickups.indexOf(pk),1); } else { pk.alive=false; pk.mesh.visible=false; pk.respawnT=pk.rare?45:30; }
   if(e.isPlayer){ notice('UZEO SI: '+W.name); sndClick(); if(pk.rare) dailyEv('rare'); } else botGunLook(e);
 }
@@ -1747,7 +1779,7 @@ function updatePickups(dt){
     if(pk.kind==='ammo'||pk.kind==='hp'){ for(const e of ents){ if(!e.alive||e.veh||e.turret) continue; if(Math.hypot(e.pos.x-pk.x,e.pos.z-pk.z)<1.1&&Math.abs(e.pos.y-pk.y)<1.5){
         if(pk.kind==='hp'){ if(e.hp>=99&&!(e.burnT>gTime)) continue; e.hp=Math.min(100,e.hp+60); e.burnT=0; } else { for(const gg of e.guns){ const WW=WEAPONS[gg.key]; gg.reserve=Math.max(gg.reserve,WW.reserve); } e.equip.n=Math.max(e.equip.n,EQUIP[e.equip.key].n); }
         pk.alive=false; pk.mesh.visible=false; pk.respawnT=30; if(e.isPlayer){ notice(pk.kind==='hp'?'ZDRAVLJE +60':'MUNICIJA NADOPUNJENA'); tone({f0:700,f1:1100,dur:0.15,vol:0.2}); } break; } } } }
-  if(gTime>nextDrop&&nextDrop>0){ nextDrop=gTime+rnd(120,180); doDrop(); }
+  if(gTime>nextDrop&&nextDrop>0&&gameMode!=='gun'){ nextDrop=gTime+rnd(120,180); doDrop(); }
   for(let i=drops.length-1;i>=0;i--){ const d=drops[i]; d.y-=3.5*dt; const gy=groundY(d.x,d.z,d.y,0.5); d.g.position.y=d.y; d.g.rotation.y+=dt*0.3;
     if(d.y<=gy){ scene.remove(d.g); drops.splice(i,1); const pk=spawnPickup(d.x,gy,d.z,'rare',d.key,true); pk.life=120; pk.drop=true; const cr=new THREE.Mesh(new THREE.BoxGeometry(1,0.8,1),texMat('crate')); cr.position.y=0.4; pk.mesh.add(cr); } }
 }
@@ -1941,6 +1973,7 @@ function updatePlayer(dt){
     if(p.respawnT<=0&&NET.role!=='client'){ spawnEnt(p); $('death').hidden=true; camera.rotation.z=0; hurtFlash=0; }
     return;
   }
+  if(myDrone) return updateDrone(dt);
   if(p.veh) return updatePlayerVehicle(dt);
   if(p.turret) return updatePlayerTurret(dt);
   $('barrel').style.display='none';
@@ -1952,6 +1985,7 @@ function updatePlayer(dt){
   if(input.reloadQ){ input.reloadQ=false; if(buildMode) buildMode.rot=(buildMode.rot+1)%2; else startReload(p); }
   if(input.ksQ){ input.ksQ=false; if(NET.role!=='client') callAir(); }
   if(input.knifeQ){ input.knifeQ=false; if(p.knifeT<=0&&!buildMode){ knifeAttack(p,p.yaw); NET.act({t:'kn',y:p.yaw}); } }
+  if(input.equipQ&&p.equip.key==='drone'){ input.equipQ=false; if(p.equip.n>0&&!myDrone&&!buildMode){ launchDrone(); if(!settings.god) p.equip.n--; } else if(p.equip.n<=0) notice('NEMA DRONA'); }
   if(input.equipQ){ input.equipQ=false;
     if(p.equip.key==='build'){ if(buildMode) buildMode=null; else if(p.equip.n>0) buildMode={piece:0,rot:0}; }
     else if(p.swapT<=0){ camFwd(fwdV); if(NET.role==='client'?NET.equip(p,fwdV):useEquipment(p,fwdV)) p.swapT=0.5; else if(p.equip.n>0) notice('NEMA MJESTA'); } }
@@ -2053,6 +2087,7 @@ function pickPatrol(b){
     else if(order.type==='hold'){ goal=nearestNodeXZ(order.pos.x+rnd(-5,5),order.pos.z+rnd(-5,5),order.pos.y); }
     else if(order.type==='follow'&&player.alive){ goal=nearestNodeXZ(player.pos.x+rnd(-4,4),player.pos.z+rnd(-4,4),player.pos.y); }
     if(goal>=0){ setPathNode(b,goal); if(b.ai.path.length) return; } }
+  if(gameMode==='meta'&&VIP&&VIP.alive&&VIP!==b&&Math.random()<0.75){ const off=VIP.team===b.team?5:10; goal=nearestNodeXZ(VIP.pos.x+rnd(-off,off),VIP.pos.z+rnd(-off,off),VIP.pos.y); setPathNode(b,goal); if(b.ai.path.length) return; }
   if(b.equip.key==='beacon'&&b.equip.n>0&&Math.abs(b.pos.x)<36&&Math.random()<0.35){ placeBeacon(b); b.equip.n--; }
   if(gameMode==='conq'&&Math.random()<0.7){ const tm=b.team; let c=BASES.filter(B=>b.ai.def?(B.owner===tm):(B.owner!==tm));
     const hot=BASES.filter(B=>B.owner===tm&&(tm===0?B.n1:B.n0)>0); if(hot.length&&Math.random()<0.6) c=hot; if(!c.length) c=BASES.filter(B=>B.owner!==tm); if(!c.length) c=BASES.slice();
@@ -2080,7 +2115,8 @@ function botTargets(b,eye,view,arcCheck,omni){
     const da=Math.abs(angDiff(ya,ai.aimYaw)); const aware=d<9||(ai.hurtBy===e&&gTime-b.lastHurt<3)||(gTime-e.lastFired<1&&d<40);
     if(!omni&&da>78*DEG&&!aware) continue;
     if(!los(eye,chestP(e,_t2),true)&&!los(eye,headP(e,_t2),true)) continue;
-    let sc=d; if(ai.hurtBy===e) sc*=0.5; if(e===ai.target) sc*=0.7; if(sc<bs){bs=sc;best=e;} }
+    let sc=d; if(ai.hurtBy===e) sc*=0.5; if(e===ai.target) sc*=0.7; if(e===VIP&&gameMode==='meta') sc*=0.4; if(sc<bs){bs=sc;best=e;} }
+  for(const dr of drones){ if(dr.dead||dr.team===b.team) continue; const d=dr.pos.distanceTo(eye); if(d>Math.min(view,38)) continue; if(!los(eye,dr.pos,true)) continue; const sc=d*1.3; if(sc<bs){ bs=sc; best=dr; } }
   for(const v of vehicles){ if(v.dead) continue; const ot=occTeam(v); if(ot===null||ot===b.team) continue; if(v.type==='tank'&&!hasRpg&&!arcCheck&&!b.veh) continue;
     const dx=v.pos.x-b.pos.x, dz=v.pos.z-b.pos.z, d=Math.hypot(dx,dz); if(d>view) continue; const ya=Math.atan2(-dx,-dz); if(arcCheck&&!arcCheck(ya)) continue;
     if(!los(eye,aimP(v,_t2),true)) continue; let sc=d*(v.type==='tank'?0.6:0.8)*(b.pers==='lovac'?0.4:1); if(sc<bs){bs=sc;best=v;} }
@@ -2269,7 +2305,7 @@ function updateBot(b,dt){
   m.g.position.copy(b.pos); m.g.rotation.set(0,ai.aimYaw,0); m.upper.rotation.x=clamp(ai.aimPitch,-0.6,0.6)*0.6;
   ai.walkPh+=moved*4.2; const sw=Math.sin(ai.walkPh)*Math.min(1,moved/dt/4)*0.7; m.legs[0].rotation.x=sw; m.legs[1].rotation.x=-sw;
   const cs=b.crouch?0.72:1; m.g.scale.y+=(cs-m.g.scale.y)*Math.min(1,dt*10);
-  m.label.visible=b.team===0||(ai.vis&&state==='play');
+  m.label.visible=b.team===player.team||(ai.vis&&state==='play')||b.spotT>gTime||(b===VIP&&gameMode==='meta');
 }
 function separate(){
   for(let i=0;i<ents.length;i++){ const a=ents[i]; if(!a.alive||a.veh||a.turret) continue; for(let j=i+1;j<ents.length;j++){ const b=ents[j]; if(!b.alive||b.veh||b.turret) continue;
@@ -2295,7 +2331,9 @@ function drawMinimap(dt){
   const dot=(x,z,c,r)=>{ mx.fillStyle=c; mx.beginPath(); mx.arc((x+60)*MMS,(z+40)*MMS,r,0,Math.PI*2); mx.fill(); };
   const sq=(x,z,c,r)=>{ mx.fillStyle=c; mx.fillRect((x+60)*MMS-r,(z+40)*MMS-r,r*2,r*2); };
   for(const v of vehicles){ if(v.dead) continue; const ot=occTeam(v); if(ot===null) sq(v.pos.x,v.pos.z,v.baseTeam===0?'rgba(125,178,230,.45)':'rgba(226,88,76,.35)',5); else if(ot===0) sq(v.pos.x,v.pos.z,'#7db2e6',6); else if(ks.radarT>0||gTime-(v.driver||v.gunner).lastFired<1.4) sq(v.pos.x,v.pos.z,'#e2584c',6); }
-  for(const e of ents){ if(!e.alive||e===player||e.veh) continue; if(e.team===0) dot(e.pos.x,e.pos.z,'#7db2e6',4); else if(ks.radarT>0||gTime-e.lastFired<1.4) dot(e.pos.x,e.pos.z,'#e2584c',4.5); }
+  for(const e of ents){ if(!e.alive||e===player||e.veh) continue; if(e.team===player.team) dot(e.pos.x,e.pos.z,'#7db2e6',4); else if(ks.radarT>0||gTime-e.lastFired<1.4||e.spotT>gTime||(e===VIP&&gameMode==='meta')) dot(e.pos.x,e.pos.z,'#e2584c',4.5); }
+  if(gameMode==='meta'&&VIP&&VIP.alive){ mx.strokeStyle='#ffd23a'; mx.lineWidth=3; mx.beginPath(); mx.arc((VIP.pos.x+60)*MMS,(VIP.pos.z+40)*MMS,9,0,Math.PI*2); mx.stroke(); }
+  for(const d of (NET.role==='client'?NET.drList||[]:drones)){ const x=d.pos?d.pos.x:d[0], z=d.pos?d.pos.z:d[2], tm=d.pos?d.team:NET.L(d[4]); if(tm===player.team) sq(x,z,'#9fe0ff',3); }
   for(const m of mines){ if(m.team===0) dot(m.pos.x,m.pos.z,'rgba(212,172,82,.8)',2.5); }
   for(const bc of beacons){ if(bc.team===0) sq(bc.pos.x,bc.pos.z,'#9fcf6a',3); }
   for(const pk of pickups){ if(pk.alive&&pk.rare) dot(pk.x,pk.z,pk.drop?'#ffe08a':'rgba(255,210,122,.7)',pk.drop?5:3); }
@@ -2328,13 +2366,13 @@ function updateHud(dt){
   const p=player, g=curGun(p), W=WEAPONS[g.key];
   const mm_=Math.floor(Math.max(0,roundTime)/60), ss=Math.floor(Math.max(0,roundTime)%60);
   const inV=p.veh, inT=p.turret;
-  const key=[gameMode==='conq'?conqPts.join(','):'',settings.god,Math.round(g.heat||0),Math.round(p.energy||0),g.key,g.mag,g.reserve,W.name,p.equip.key,p.equip.n,teamScore[0],teamScore[1],mm_,ss,p.streak,ks.air,Math.ceil(p.hp),!!inV,!!inT,buildMode?buildMode.piece:-1].join('|');
+  const key=[modeScore().join(','),gameMode,VIP?VIP.name:'',settings.god,Math.round(g.heat||0),Math.round(p.energy||0),g.key,g.mag,g.reserve,W.name,p.equip.key,p.equip.n,teamScore[0],teamScore[1],mm_,ss,p.streak,ks.air,Math.ceil(p.hp),!!inV,!!inT,buildMode?buildMode.piece:-1].join('|');
   if(key!==lastHud){ lastHud=key;
     if(inV||inT){ $('mag').textContent=inV?(inV.type==='tank'?(p.seat==='driver'?'TOP':'—'):(p.seat==='gunner'?'MITR.':'VOZI')):'∞'; $('res').textContent=''; $('wName').textContent=inV?inV.T.name:'TEŠKI MITRALJEZ'; }
     else { $('mag').textContent=W.melee?'—':g.mag; $('res').textContent=W.melee?(W.block?'ENERGIJA '+Math.round(p.energy||0):''):W.beam?'TOPLINA '+Math.round(g.heat||0)+'%':'/ '+(settings.god?'∞':g.reserve); $('wName').textContent=W.name+(g.att&&g.att!=='none'?' · '+ATTS[g.att].toUpperCase():''); }
     $('equip').textContent=EQUIP[p.equip.key].name+' ×'+p.equip.n;
     $('mag').style.color=!inV&&!inT&&g.mag<=Math.ceil(W.mag*0.25)?'var(--enemy)':'';
-    $('sA').textContent=gameMode==='conq'?conqPts[0]:teamScore[0]; $('sB').textContent=gameMode==='conq'?conqPts[1]:teamScore[1]; $('timer').textContent=mm_+':'+String(ss).padStart(2,'0');
+    const MS=modeScore(); $('sA').textContent=gameMode==='gun'?MS[0]+'/'+GG.length:MS[0]; $('sB').textContent=gameMode==='gun'?MS[1]+'/'+GG.length:MS[1]; $('timer').textContent=mm_+':'+String(ss).padStart(2,'0');
     const nx=p.streak<3?['Radar',3]:p.streak<5?['Zračni napad',5]:p.streak<7?['Helikopter',7]:null;
     $('streak').innerHTML='NIZ <b>'+p.streak+'</b>'+(nx?' · '+nx[0]+' za '+(nx[1]-p.streak):' · MAKSIMALNO');
     $('hpNum').textContent=Math.ceil(p.hp); $('hpFill').style.width=Math.max(0,p.hp)+'%'; $('hpFill').style.background=p.hp<35?'var(--enemy)':p.hp<65?'var(--accent)':'var(--good)';
@@ -2361,7 +2399,7 @@ function updateHud(dt){
   $('vig').style.opacity=p.alive?clamp((1-p.hp/100)*0.85+hurtFlash*0.5,0,1):0.6;
   const cr=$('cross'), sc=W.scope&&adsT>0.85;
   if(!p.alive||sc||buildMode){ cr.style.display='none'; } else { cr.style.display='block';
-    if(inV||inT){ for(let i=0;i<4;i++) cr.children[i].style.display='none'; cr.children[4].style.display='block'; cr.children[5].style.display='block'; }
+    if(inV||inT||myDrone){ for(let i=0;i<4;i++) cr.children[i].style.display='none'; cr.children[4].style.display='block'; cr.children[5].style.display='block'; }
     else { const ads=adsT>0.6; const gap=Math.tan(currentSpread(W)*DEG)/Math.tan(camera.fov/2*DEG)*innerHeight/2+4; const ch=cr.children;
       const XL=XH_LEN[settings.xs]||11; ch[0].style.top=(-gap-XL)+'px'; ch[1].style.top=gap+'px'; ch[2].style.left=(-gap-XL)+'px'; ch[3].style.left=gap+'px';
       const rd=ads&&W.pellets===1&&!W.melee; for(let i=0;i<4;i++) ch[i].style.display=rd?'none':'block'; ch[4].style.display=rd||W.melee?'block':'none'; ch[5].style.display=rd?'block':'none'; }
@@ -2469,7 +2507,7 @@ function startGame(){
   resetRound(); state='play'; showGameUI(true); lockPointer(); rainSound(ATM.weather==='rain');
   timers.push({t:0.2,fn:()=>notice((MAP==='port'?'LUKA':'SELO')+' · '+({day:'DAN',dusk:'SUMRAK',night:'NOĆ'})[ATM.time]+({clear:'',rain:' · KIŠA',fog:' · MAGLA'})[ATM.weather])});
   if(isTouch){ try{ const el=document.documentElement; const r=el.requestFullscreen&&el.requestFullscreen({navigationUI:'hide'}); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }
-  notice(isTouch?'LIJEVO KRETANJE · DESNO POGLED':'TEAM DEATHMATCH · PRVI DO 50'); $('lookHint').style.opacity=1;
+  notice(({conq:'OSVAJANJE BAZA · PRVI DO 300',tdm:'TEAM DEATHMATCH · PRVI DO 50',gun:'GUN GAME · SVAKO UBOJSTVO NOVO ORUŽJE',meta:'LOV NA METU · PRVI DO 150'})[gameMode]); $('lookHint').style.opacity=1;
 }
 function pauseGame(){ if(state!=='play') return; rainSound(false); state='paused'; $('pauseBoard').innerHTML=boardHTML(); $('pause').hidden=false; input.fire=false; input.ads=false; }
 function resumeGame(){ $('pause').hidden=true; state='play'; initAudio(); lockPointer(); rainSound(ATM.weather==='rain'); }
@@ -2477,9 +2515,9 @@ function endRound(){
   rainSound(false);
   if(state!=='play'&&state!=='paused') return; state='end'; showGameUI(false); $('pause').hidden=true; $('death').hidden=true; $('tab').hidden=true;
   try{ document.exitPointerLock&&document.exitPointerLock(); }catch(e){}
-  const SC=gameMode==='conq'?conqPts:teamScore; const win=SC[0]>SC[1]?0:SC[1]>SC[0]?1:-1;
+  const SC=modeScore(); const win=gameMode==='gun'&&ggWinner?ggWinner.team:SC[0]>SC[1]?0:SC[1]>SC[0]?1:-1;
   $('endTitle').textContent=win===0?'Pobjeda':win===1?'Poraz':'Neriješeno';
-  $('endEyebrow').textContent=(gameMode==='conq'?'Osvajanje baza':'Team Deathmatch')+` · ${SC[0]} : ${SC[1]}`;
+  $('endEyebrow').textContent=MODE_NAMES[gameMode]+(gameMode==='gun'&&ggWinner?' · pobjednik '+ggWinner.name:` · ${SC[0]} : ${SC[1]}`);
   const mvp=ents.slice().sort((a,b)=>b.score-a.score||(b.kills/Math.max(1,b.deaths))-(a.kills/Math.max(1,a.deaths)))[0];
   $('mvp').innerHTML=`<div><div class="eyebrow">MVP runde</div><b class="${mvp.isPlayer?'me':mvp.team===0?'ca':'ce'}">${mvp.name}</b></div><div class="lead">${mvp.kills} ubojstava · ${mvp.deaths} smrti · K/D ${(mvp.kills/Math.max(1,mvp.deaths)).toFixed(2)}</div>`;
   $('endBoard').innerHTML=boardHTML();
@@ -2612,6 +2650,62 @@ document.querySelectorAll('#touchUI [data-btn]').forEach(b=>{
 addEventListener('touchmove',e=>{ if(state==='play') e.preventDefault(); },{passive:false});
 addEventListener('touchstart',e=>{ if(state==='play'&&e.target&&e.target.closest&&e.target.closest('#touchUI')) e.preventDefault(); },{passive:false});
 
+
+/* ================= drone ================= */
+const drones=[]; let myDrone=null; const dronePool=[];
+function makeDroneMesh(team){ const g=new THREE.Group(); const body=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.12,0.42),mat(0x2a2e2b)); g.add(body);
+  const rot=[]; for(const [x,z] of [[-0.3,-0.3],[0.3,-0.3],[-0.3,0.3],[0.3,0.3]]){ const arm=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.04,0.05),mat(0x3a3f3a)); arm.position.set(x,0.05,z); g.add(arm);
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.17,0.01,10),new THREE.MeshBasicMaterial({color:0x9a9a9a,transparent:true,opacity:0.45,depthWrite:false})); r.position.set(x,0.08,z); g.add(r); rot.push(r); }
+  const led=new THREE.Mesh(new THREE.SphereGeometry(0.04,6,4),new THREE.MeshBasicMaterial({color:team===player.team?0x5aa0ff:0xff4a3a})); led.position.set(0,-0.06,-0.21); g.add(led);
+  const cam=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,4),mat(0x111111)); cam.position.set(0,-0.08,-0.15); g.add(cam);
+  g.userData.led=led; scene.add(g); return g; }
+function launchDrone(){ const p=player; const D={owner:p,team:p.team,pos:new V3(p.pos.x,eyeY(p)+1.2,p.pos.z),vel:new V3(),yaw:p.yaw,pitch:-0.35,t:25,nades:2,hp:55,
+    isDrone:true,isVeh:true,type:'drone',alive:true,dead:false,bodyYaw:p.yaw,bodyPitch:p.pitch,local:true,buzzT:0,last:gTime};
+  myDrone=D; p.pitch=-0.35; p.crouch=true; input.fire=false; input.ads=false; adsT=0;
+  if(NET.role!=='client'){ D.mesh=makeDroneMesh(p.team); D.mesh.visible=false; drones.push(D); }
+  $('droneHud').hidden=false; document.body.classList.add('drone'); notice('DRON U ZRAKU'); tone({f0:300,f1:900,dur:0.4,vol:0.2}); }
+function removeDrone(D){ D.dead=true; D.alive=false; const i=drones.indexOf(D); if(i>=0) drones.splice(i,1); if(D.mesh) scene.remove(D.mesh); }
+function endDrone(destroyed,silent){ const D=myDrone; if(!D) return; myDrone=null; const p=player;
+  if(NET.role==='client') netSend({t:'dn',on:0}); else removeDrone(D);
+  p.yaw=D.bodyYaw; p.pitch=D.bodyPitch; $('droneHud').hidden=true; document.body.classList.remove('drone'); camera.fov=75; camera.updateProjectionMatrix();
+  if(!silent) notice(destroyed?'DRON UNIŠTEN':'DRON SE VRATIO'); }
+function damageDrone(D,dmg,att){ if(NET.role==='client'||D.dead) return; if(att&&att.team===D.team) return; D.hp-=dmg; if(att===player) showHit(D.hp<=0,false);
+  if(D.hp<=0){ const pos=D.pos.clone(); NET.mute++; try{ sndBoom(pos,false); for(let i=0;i<qn(18);i++) sparks.emit(pos.x,pos.y,pos.z,rnd(-5,5),rnd(-2,5),rnd(-5,5),CS.spark,rnd(.3,.7),14); spawnDebris(pos.x,pos.y,pos.z,0x2a2e2b,null,1); } finally{ NET.mute--; }
+    if(NET.role==='host') NET.ev.push(['bx',r2(pos.x),r2(pos.y),r2(pos.z),1.5,0,-1]);
+    if(D===myDrone) endDrone(true); else { removeDrone(D); if(D.owner&&D.owner.remote){ try{ D.owner.remote.c.send({t:'dx'}); }catch(e){} } }
+    if(att&&att!==D.owner&&att.score!==undefined) att.score+=50; } }
+function droneMove(D,dt,mf,ms){
+  const cp=Math.cos(D.pitch); const fx=-Math.sin(D.yaw)*cp, fy=Math.sin(D.pitch), fz=-Math.cos(D.yaw)*cp, rx=Math.cos(D.yaw), rz=-Math.sin(D.yaw);
+  const sp=11; const tx=(fx*mf+rx*ms)*sp, ty=fy*mf*sp, tz=(fz*mf+rz*ms)*sp; const k=1-Math.exp(-4*dt);
+  D.vel.x+=(tx-D.vel.x)*k; D.vel.z+=(tz-D.vel.z)*k; D.vel.y+=(ty-D.vel.y)*k; D.vel.y*=Math.exp(-2*dt);
+  const nx=D.pos.x+D.vel.x*dt; if(blockedAt(nx,D.pos.z,D.pos.y-0.25,0.35,0.5)) D.vel.x*=-0.3; else D.pos.x=nx;
+  const nz=D.pos.z+D.vel.z*dt; if(blockedAt(D.pos.x,nz,D.pos.y-0.25,0.35,0.5)) D.vel.z*=-0.3; else D.pos.z=nz;
+  const ny=D.pos.y+D.vel.y*dt; if(blockedAt(D.pos.x,D.pos.z,ny-0.25,0.35,0.5)) D.vel.y=0; else D.pos.y=ny;
+  const gy=Math.max(groundY(D.pos.x,D.pos.z,D.pos.y,0.3),RIV.water)+0.45; if(D.pos.y<gy){ D.pos.y=gy; D.vel.y=Math.max(0,D.vel.y); } if(D.pos.y>42){ D.pos.y=42; D.vel.y=Math.min(0,D.vel.y); }
+  D.pos.x=clamp(D.pos.x,-62,62); D.pos.z=clamp(D.pos.z,-42,42); }
+function updateDrone(dt){ const p=player, D=myDrone;
+  D.t-=dt; if(D.t<=0) return endDrone(false); if(!p.alive) return endDrone(true);
+  if(input.useQ||input.equipQ){ input.useQ=false; input.equipQ=false; return endDrone(false); }
+  input.swapQ=false; input.reloadQ=false; input.knifeQ=false; input.ksQ=false;
+  let mf=input.f-input.b, ms=input.r-input.l; if(input.joyX!==0||input.joyY!==0){ mf=-input.joyY; ms=input.joyX; }
+  if(input.jumpQ){ input.jumpQ=false; D.vel.y+=6; } if(input.crouchQ){ input.crouchQ=false; D.vel.y-=6; }
+  p.pitch=clamp(p.pitch,-1.5,0.9); D.yaw=p.yaw; D.pitch=p.pitch; droneMove(D,dt,mf,ms);
+  const dist=Math.hypot(D.pos.x-p.pos.x,D.pos.z-p.pos.z); if(dist>75){ const k=(dist-75)/dist; D.pos.x-=(D.pos.x-p.pos.x)*k; D.pos.z-=(D.pos.z-p.pos.z)*k; if(Math.random()<0.05) notice('SLAB SIGNAL'); }
+  if(input.fireEdge&&D.nades>0){ D.nades--; if(NET.role==='client') netSend({t:'dg'}); else throwNade(p,new V3(D.vel.x*0.6,-1.5,D.vel.z*0.6),D.pos.clone().setY(D.pos.y-0.3),'frag'); sndClick(); }
+  input.fireEdge=false; input.fire=false;
+  D.buzzT-=dt; if(D.buzzT<=0){ D.buzzT=0.5; tone({f0:190,f1:200,dur:0.5,vol:0.05,type:'sawtooth'}); }
+  if(NET.role==='client'){ D.sendT=(D.sendT||0)-dt; if(D.sendT<=0){ D.sendT=0.05; netSend({t:'dn',on:1,p:[r3(D.pos.x),r3(D.pos.y),r3(D.pos.z)],y:r3(D.yaw)}); } }
+  camera.position.copy(D.pos); camera.rotation.set(D.pitch,D.yaw,0); if(Math.abs(camera.fov-70)>0.1){ camera.fov=70; camera.updateProjectionMatrix(); }
+  if(curModel) curModel.visible=false; $('scope').style.display='none';
+  $('droneT').textContent=Math.ceil(D.t); $('droneN').textContent=D.nades; }
+function updateDrones(dt){ for(const D of drones.slice()){ if(D.dead) continue;
+    if(!D.local&&gTime-D.last>2){ removeDrone(D); continue; }
+    if(D.mesh){ D.mesh.position.copy(D.pos); D.mesh.rotation.y=D.yaw; for(let i=0;i<D.mesh.children.length;i++){ const c=D.mesh.children[i]; if(c.geometry&&c.geometry.type==='CylinderGeometry') c.rotation.y+=dt*40; } D.mesh.visible=D!==myDrone; }
+    D.spT=(D.spT||0)-dt; if(D.spT<=0){ D.spT=0.25; let n=0; for(const e of ents){ if(!e.alive||e.team===D.team||e.hid) continue; if(e.pos.distanceTo(D.pos)>36) continue; if(!los(D.pos,chestP(e,_t2),true)) continue; if(!(e.spotT>gTime)) n++; e.spotT=gTime+4; }
+      if(n&&D.owner===player) notice('DRON OZNAČIO: '+n); } } }
+function netDronePool(){ const L=NET.drList||[]; while(dronePool.length<L.length){ const m=makeDroneMesh(1-player.team); dronePool.push(m); }
+  dronePool.forEach((m,i)=>{ const a=L[i]; if(!a){ m.visible=false; return; } m.visible=true; m.position.set(a[0],a[1],a[2]); m.rotation.y=a[3]; m.userData.led.material.color.setHex(NET.L(a[4])===player.team?0x5aa0ff:0xff4a3a);
+    for(const c of m.children) if(c.geometry&&c.geometry.type==='CylinderGeometry') c.rotation.y+=0.6; }); }
 /* ================= multiplayer (PeerJS, host-authoritative) ================= */
 const NET={role:null,peer:null,conns:[],conn:null,code:'',mode:'coop',myIdx:-1,flip:false,tag:-1,mute:0,ev:[],blkDirty:new Map(),bid:0,bm:{},sendT:0,slowT:0,stT:0,respT:0,lobby:[],lastLd:'',pool:[]};
 NET.L=t=>(t===null||t===undefined)?t:(NET.flip?1-t:t);
@@ -2621,7 +2715,7 @@ const r2=v=>Math.round(v*100)/100, r3=v=>Math.round(v*1000)/1000;
 const escH=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 function netStatus(t){ $('netStatus').textContent=t; }
 function netLoadLib(cb){ if(window.Peer) return cb(); const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
-  s.onload=()=>window.Peer?cb():netStatus('Mrežna biblioteka se nije učitala.'); s.onerror=()=>netStatus('Ne mogu učitati mrežnu biblioteku. Provjeri internet.'); (document.head||document.body).appendChild(s); }
+  s.onload=()=>cb(); s.onerror=()=>cb(); (document.head||document.body).appendChild(s); }
 function netOpts(){ const T=(u)=>({urls:u,username:'openrelayproject',credential:'openrelayproject'});
   return Object.assign({debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},T('turn:openrelay.metered.ca:80'),T('turn:openrelay.metered.ca:443'),T('turn:openrelay.metered.ca:443?transport=tcp')]}},window.__PEERCFG||{}); }
 function netErr(e){ const t=e&&e.type||'';
@@ -2629,29 +2723,84 @@ function netErr(e){ const t=e&&e.type||'';
   if(t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed') return 'Ne mogu do mrežnog poslužitelja. Multiplayer radi u verziji igre s GitHuba (na mobitelu), ne u pregledu ovdje.';
   if(t==='browser-incompatible') return 'Ovaj preglednik ne podržava multiplayer.';
   return 'Greška veze ('+t+').'; }
-function netReset(){ try{ if(NET.peer) NET.peer.destroy(); }catch(e){} NET.peer=null; NET.conns=[]; NET.conn=null; NET.role=null; NET.code=''; NET.lobby=[]; renderNet(); }
+/* ---- relay fallback: minimal MQTT 3.1.1 over WebSocket (public brokers) ---- */
+const RELAYS=window.__RELAYS||['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
+const _te=new TextEncoder(), _td=new TextDecoder();
+function mqStr(s){ const b=_te.encode(s); const o=new Uint8Array(2+b.length); o[0]=b.length>>8; o[1]=b.length&255; o.set(b,2); return o; }
+function mqPkt(type,parts){ const len=parts.reduce((a,p)=>a+p.length,0); const hdr=[type]; let x=len; do{ let d=x%128; x=Math.floor(x/128); if(x>0) d|=128; hdr.push(d); }while(x>0);
+  const o=new Uint8Array(hdr.length+len); o.set(hdr,0); let k=hdr.length; for(const p of parts){ o.set(p,k); k+=p.length; } return o; }
+function mqClient(urls,onMsg,onState){
+  const C={ok:false,ws:null,dead:false,subs:new Set(),buf:new Uint8Array(0),pingT:null,pid:1}; let ui=0;
+  const sendSub=t=>{ C.pid=C.pid%60000+1; try{ C.ws.send(mqPkt(0x82,[new Uint8Array([C.pid>>8,C.pid&255]),mqStr(t),new Uint8Array([0])])); }catch(e){} };
+  const parse=()=>{ for(;;){ const b=C.buf; if(b.length<2) return; let mul=1,len=0,i=1,byte; do{ if(i>=b.length) return; byte=b[i++]; len+=(byte&127)*mul; mul*=128; }while(byte&128);
+      if(b.length<i+len) return; const type=b[0]&0xF0, fl=b[0]&0x0F, body=b.subarray(i,i+len); C.buf=b.slice(i+len);
+      if(type===0x20){ if(body[1]===0){ C.ok=true; for(const t of C.subs) sendSub(t); clearInterval(C.pingT); C.pingT=setInterval(()=>{ try{ C.ws.send(new Uint8Array([0xC0,0])); }catch(e){} },25000); onState('ok'); } }
+      else if(type===0x30){ const tl=(body[0]<<8)|body[1]; const topic=_td.decode(body.subarray(2,2+tl)); let k=2+tl; if(fl&6) k+=2; let m=null; try{ m=JSON.parse(_td.decode(body.subarray(k))); }catch(e){} if(m) onMsg(topic,m); } } };
+  const connect=()=>{ if(C.dead) return; if(ui>=urls.length){ onState('fail'); return; } const url=urls[ui++]; let ws; try{ ws=new WebSocket(url,'mqtt'); }catch(e){ connect(); return; }
+    ws.binaryType='arraybuffer'; C.ws=ws; C.buf=new Uint8Array(0); const to=setTimeout(()=>{ if(!C.ok&&C.ws===ws){ try{ ws.close(); }catch(e){} } },7000);
+    ws.onopen=()=>{ const id='mdb'+Math.random().toString(36).slice(2,12); try{ ws.send(mqPkt(0x10,[new Uint8Array([0,4,77,81,84,84,4,2,0,60]),mqStr(id)])); }catch(e){} };
+    ws.onmessage=ev=>{ const d=new Uint8Array(ev.data); const nb=new Uint8Array(C.buf.length+d.length); nb.set(C.buf); nb.set(d,C.buf.length); C.buf=nb; parse(); };
+    const down=()=>{ clearTimeout(to); if(C.ws!==ws) return; C.ws=null; const was=C.ok; C.ok=false; clearInterval(C.pingT); if(C.dead) return; if(was) onState('lost'); else connect(); };
+    ws.onclose=down; ws.onerror=down; };
+  C.sub=t=>{ C.subs.add(t); if(C.ok) sendSub(t); };
+  C.pub=(t,obj)=>{ if(!C.ok||!C.ws) return; try{ C.ws.send(mqPkt(0x30,[mqStr(t),_te.encode(JSON.stringify(obj))])); }catch(e){} };
+  C.close=()=>{ C.dead=true; clearInterval(C.pingT); try{ C.ws&&C.ws.close(); }catch(e){} };
+  connect(); return C; }
+function relayConn(sendFn){ const L={}; const c={open:true,relay:true,last:performance.now(),
+    on(ev,cb){ (L[ev]=L[ev]||[]).push(cb); return c; }, send(o){ if(c.open) sendFn(o); },
+    close(){ if(!c.open) return; c.open=false; (L.close||[]).slice().forEach(f=>f()); }, _emit(ev,a){ (L[ev]||[]).slice().forEach(f=>f(a)); } }; return c; }
+/* ---- connection management (direct WebRTC first, relay as fallback) ---- */
+function netReset(){ try{ if(NET.peer) NET.peer.destroy(); }catch(e){} try{ if(NET.mq) NET.mq.close(); }catch(e){} clearInterval(NET.hbT);
+  NET.peer=null; NET.mq=null; NET.rconns={}; NET.conns=[]; NET.conn=null; NET.role=null; NET.code=''; NET.lobby=[]; NET.via=''; renderNet(); }
+function netAccept(c){ const P={c,name:'Igrač',load:null,idx:-1,hits:[],god:false,ok:false,q:[]};
+  c.on('data',d=>{ if(!P.ok){ if(P.q.length<20) P.q.push(d); return; } try{ netHostMsg(P,d); }catch(err){ console.error(err); } });
+  c.on('open',()=>{
+    if((state!=='menu'&&state!=='end')||NET.conns.length>=3){ c.send({t:'full'}); setTimeout(()=>{ try{c.close();}catch(e){} },400); return; }
+    P.ok=true; NET.conns.push(P); c.on('close',()=>netDrop(P)); c.on('error',()=>netDrop(P));
+    c.send({t:'hi',map:MAP}); for(const d of P.q.splice(0)){ try{ netHostMsg(P,d); }catch(err){} } netLobbyCast(); renderNet(); }); }
+function netHostReady(){ if(NET.role==='host') return; NET.role='host'; netStatus('Soba je otvorena. Pošalji ekipi šifru: '+NET.code); renderNet(); }
 function netHost(){ netLoadLib(()=>{ netReset(); const A='ABCDEFGHJKLMNPQRSTUVWXYZ'; let code=''; for(let i=0;i<4;i++) code+=A[ri(A.length)];
-  const peer=new Peer('mdbz-'+code,netOpts()); NET.peer=peer; NET.code=code; netStatus('Otvaram sobu…');
-  peer.on('open',()=>{ NET.role='host'; netStatus('Soba je otvorena. Pošalji ekipi šifru: '+code); renderNet(); });
-  peer.on('connection',c=>{ const P={c,name:'Igrač',load:null,idx:-1,hits:[],god:false,ok:false,q:[]};
-    c.on('data',d=>{ if(!P.ok){ if(P.q.length<20) P.q.push(d); return; } try{ netHostMsg(P,d); }catch(err){ console.error(err); } });
-    c.on('open',()=>{
-      if((state!=='menu'&&state!=='end')||NET.conns.length>=3){ c.send({t:'full'}); setTimeout(()=>{ try{c.close();}catch(e){} },400); return; }
-      P.ok=true; NET.conns.push(P); c.on('close',()=>netDrop(P)); c.on('error',()=>netDrop(P));
-      c.send({t:'hi',map:MAP}); for(const d of P.q.splice(0)){ try{ netHostMsg(P,d); }catch(err){} } netLobbyCast(); renderNet(); }); });
-  peer.on('error',e=>{ if(e.type==='unavailable-id'){ netHost(); return; } netStatus(netErr(e)); if(!NET.role) netReset(); });
-  peer.on('disconnected',()=>{ try{ peer.reconnect(); }catch(e){} });
+  NET.code=code; netStatus('Otvaram sobu…'); let fails=0; const failed=msg=>{ if(++fails>=2&&NET.role!=='host'){ netStatus(msg||'Ne mogu otvoriti sobu. Provjeri internet.'); netReset(); } };
+  // relay side
+  NET.rconns={};
+  const mq=mqClient(RELAYS,(topic,m)=>{ const cid=String(m.f||''); if(!cid) return; let c=NET.rconns[cid];
+      if(m.j){ if(!c){ c=relayConn(o=>mq.pub('mdbz/'+code+'/c/'+cid,{d:o})); NET.rconns[cid]=c; c.on('close',()=>{ delete NET.rconns[cid]; }); netAccept(c); c._emit('open'); } c.last=performance.now(); return; }
+      if(!c) return; c.last=performance.now(); if(m.x){ c.close(); return; } if(m.d) c._emit('data',m.d); },
+    st=>{ if(st==='ok'){ mq.sub('mdbz/'+code+'/h'); netHostReady(); } else if(st==='fail') failed(); else if(st==='lost'){ for(const k in NET.rconns) NET.rconns[k].close(); } });
+  NET.mq=mq;
+  clearInterval(NET.hbT); NET.hbT=setInterval(()=>{ const now=performance.now(); for(const k in NET.rconns){ const c=NET.rconns[k]; if(now-c.last>15000) c.close(); else if(state!=='play') c.send({t:'pg'}); } },3000);
+  // direct side
+  if(window.Peer){ try{ const peer=new Peer('mdbz-'+code,netOpts()); NET.peer=peer;
+    peer.on('open',()=>{ peer._wasOpen=true; netHostReady(); });
+    peer.on('connection',c=>netAccept(c));
+    peer.on('error',e=>{ if(e.type==='unavailable-id'){ netHost(); return; } if(e.type==='network'||e.type==='server-error'||e.type==='socket-error'||e.type==='socket-closed'||e.type==='browser-incompatible') failed(netErr(e)); });
+    peer.on('disconnected',()=>{ if(peer._wasOpen&&NET.peer===peer) setTimeout(()=>{ try{ if(!peer.destroyed) peer.reconnect(); }catch(e){} },2000); }); }catch(e){ failed(); } } else failed();
 }); }
+function netClientOpen(c,via){ if(NET.role==='client') return; NET.role='client'; NET.via=via; NET.conn=c;
+  c.on('data',d=>{ try{ netCliMsg(d); }catch(err){ console.error(err); } }); c.on('close',()=>netLost('Veza s domaćinom je prekinuta.'));
+  c.send({t:'hello',name:netName,load:loadout,god:settings.god}); NET.lastLd=JSON.stringify(loadout); netStatus('U sobi si. Čekamo da domaćin pokrene igru…'); renderNet(); }
+function netJoinRelay(code){ if(NET.role==='client') return; try{ if(NET.peer) NET.peer.destroy(); }catch(e){} NET.peer=null;
+  netStatus('Izravna veza ne ide, spajam se preko posrednika…'); const cid=Math.random().toString(36).slice(2,10); let c=null;
+  const mq=mqClient(RELAYS,(topic,m)=>{ if(!c) return; c.last=performance.now(); if(m.d){ if(NET.role!=='client') netClientOpen(c,'relay'); c._emit('data',m.d); } },
+    st=>{ if(st==='ok'){ mq.sub('mdbz/'+code+'/c/'+cid); c=relayConn(o=>mq.pub('mdbz/'+code+'/h',{f:cid,d:o})); setTimeout(()=>mq.pub('mdbz/'+code+'/h',{f:cid,j:1}),300);
+        setTimeout(()=>{ if(NET.role!=='client'){ netStatus('Soba '+code+' ne postoji ili je domaćin izašao. Provjeri šifru.'); netReset(); } },9000);
+        clearInterval(NET.hbT); NET.hbT=setInterval(()=>{ if(!c) return; if(NET.role==='client'){ if(performance.now()-c.last>15000) c.close(); else mq.pub('mdbz/'+code+'/h',{f:cid,j:1}); } },3000); }
+      else if(st==='fail'){ netStatus('Ne mogu se spojiti ni izravno ni preko posrednika. Provjeri internet.'); netReset(); }
+      else if(st==='lost'&&c) c.close(); });
+  NET.mq=mq; NET.rcid=cid; }
 function netJoin(code){ code=String(code||'').toUpperCase().replace(/[^A-Z]/g,''); if(code.length!==4){ netStatus('Upiši šifru sobe (4 slova).'); return; }
-  netLoadLib(()=>{ netReset(); NET.code=code; const peer=new Peer(netOpts()); NET.peer=peer; netStatus('Spajam se u sobu '+code+'…');
-    peer.on('open',()=>{ const c=peer.connect('mdbz-'+code,{reliable:true,serialization:'json'}); NET.conn=c;
-      const to=setTimeout(()=>{ if(NET.role!=='client'){ netStatus('Ne mogu se spojiti u sobu '+code+'. Provjeri šifru i internet.'); netReset(); } },15000);
-      c.on('open',()=>{ clearTimeout(to); NET.role='client'; c.send({t:'hello',name:netName,load:loadout,god:settings.god}); NET.lastLd=JSON.stringify(loadout); netStatus('U sobi si. Čekamo da domaćin pokrene igru…'); renderNet(); });
-      c.on('data',d=>{ try{ netCliMsg(d); }catch(err){ console.error(err); } }); c.on('close',()=>netLost('Veza s domaćinom je prekinuta.')); });
-    peer.on('error',e=>{ netStatus(netErr(e)); if(NET.role!=='client') netReset(); });
-  }); }
+  netLoadLib(()=>{ netReset(); NET.code=code; netStatus('Spajam se u sobu '+code+'…');
+    if(!window.Peer){ netJoinRelay(code); return; }
+    let done=false; const fallback=()=>{ if(done||NET.role==='client') return; done=true; netJoinRelay(code); };
+    const to=setTimeout(fallback,8000);
+    try{ const peer=new Peer(netOpts()); NET.peer=peer;
+      peer.on('open',()=>{ const c=peer.connect('mdbz-'+code,{reliable:true,serialization:'json'});
+        c.on('open',()=>{ if(done) return; done=true; clearTimeout(to); netClientOpen(c,'direct'); }); });
+      peer.on('error',()=>{ clearTimeout(to); fallback(); }); }catch(e){ clearTimeout(to); fallback(); }
+  }, ()=>{ netReset(); NET.code=code; netJoinRelay(code); }); }
 function netLeave(){ if(NET.role==='host') NET.conns.forEach(P=>{ try{ P.c.send({t:'bye'}); }catch(e){} });
-  const wasClient=NET.role==='client'; setTimeout(()=>{ netReset(); if(wasClient){ try{ location.reload(); }catch(e){} } },150); }
+  if(NET.role==='client'&&NET.mq&&NET.rcid) NET.mq.pub('mdbz/'+NET.code+'/h',{f:NET.rcid,x:1});
+  const wasClient=NET.role==='client'; setTimeout(()=>{ netReset(); if(wasClient){ try{ location.reload(); }catch(e){} } },250); }
 function netLost(msg){ if(NET.role!=='client') return; NET.role=null; try{ localStorage.setItem('mdb-netmsg',msg); }catch(e){} try{ location.reload(); }catch(e){} }
 function netSend(o){ if(NET.conn&&NET.conn.open){ try{ NET.conn.send(o); }catch(e){} } }
 function netCast(o){ for(const P of NET.conns) if(P.c.open){ try{ P.c.send(o); }catch(e){} } }
@@ -2687,7 +2836,7 @@ function netSendSpawn(P,e){ try{ P.c.send({t:'sp',p:[r3(e.pos.x),r3(e.pos.y),r3(
 function netHostStart(){
   const ro=ents.map(e=>({n:e.name,t:e.team,h:(e.isPlayer||e.remote)?1:0,p:e.remote||e.isPlayer?null:(e.pers||null)}));
   NET.blkDirty.clear(); NET.ev=[]; NET.bid=0; NET.sendT=0; NET.slowT=0;
-  for(const P of NET.conns){ if(P.idx<0) continue; try{ P.c.send({t:'start',ro,you:P.idx,gm:gameMode,at:{time:ATM.time,weather:ATM.weather,p:ATM.p}}); }catch(err){} netSendSpawn(P,ents[P.idx]); }
+  for(const P of NET.conns){ if(P.idx<0) continue; try{ P.c.send({t:'start',ro,you:P.idx,gm:gameMode,at:{time:ATM.time,weather:ATM.weather,p:ATM.p,season:ATM.season}}); }catch(err){} netSendSpawn(P,ents[P.idx]); }
 }
 function netRemoteFire(e,d){ const W=WEAPONS[d.k]; if(!W||!Array.isArray(d.o)||!Array.isArray(d.d)) return;
   const o=new V3(+d.o[0],+d.o[1],+d.o[2]), dir=new V3(+d.d[0],+d.d[1],+d.d[2]); if(dir.lengthSq()<1e-6) return; dir.normalize();
@@ -2710,6 +2859,11 @@ function netHostMsg(P,d){ if(!d||!d.t) return; NET.rx=NET.rx||{}; NET.rx[d.t]=(N
     case 'bd': if(mine&&e.alive) placeBuild(e,d.pc===1?1:0,d.r?1:0); break;
     case 'use': { const pk=pickups[d.i]; if(mine&&e.alive&&pk&&pk.alive&&pk.kind!=='ammo'&&pk.kind!=='hp'&&Math.hypot(pk.x-e.pos.x,pk.z-e.pos.z)<2.6){ takePickup(e,pk); e._gk=null;
         try{ P.c.send({t:'guns',g:e.guns.map(g=>[g.key,g.mag,g.reserve]),s:e.slot}); }catch(err){} } break; }
+    case 'dn': if(mine){ let D=drones.find(x=>x.owner===e&&!x.dead);
+        if(!d.on){ if(D) removeDrone(D); break; }
+        if(!D&&e.alive){ if(e.equip.n>0&&e.equip.key==='drone'&&!P.god) e.equip.n--; D={owner:e,team:e.team,pos:new V3(),vel:new V3(),yaw:0,pitch:0,hp:55,isDrone:true,isVeh:true,type:'drone',alive:true,dead:false,local:false,last:gTime}; D.mesh=makeDroneMesh(e.team); drones.push(D); }
+        if(D&&Array.isArray(d.p)){ D.pos.set(+d.p[0],+d.p[1],+d.p[2]); D.yaw=+d.y||0; D.last=gTime; } } break;
+    case 'dg': if(mine){ const D=drones.find(x=>x.owner===e&&!x.dead); if(D) throwNade(e,new V3(0,-1.5,0),D.pos.clone().setY(D.pos.y-0.3),'frag'); } break;
     case 'pad': if(mine&&e.alive&&!P.god) applyDamage(e,clamp(+d.d||0,0,200),null,'PAD',false,false); break;
     case 'resp': if(mine&&!e.alive&&(state==='play'||state==='paused')){ e.load=netSanLoad(d.load)||e.load; e.netSC=netDecSC(d.sc,e); e.respawnT=0; spawnEnt(e); e.life=(e.life||0)+1; e.net=null; e._gk=null; netSendSpawn(P,e); } break;
   } }
@@ -2732,12 +2886,13 @@ NET.hostTick=function(dt){ if(NET.role!=='host'||!NET.conns.length) return; NET.
   NET.slowT-=1/15; const slow=NET.slowT<=0; if(slow) NET.slowT=0.5;
   const S={t:'s',rt:Math.round(roundTime),ts:teamScore.slice(),cp:conqPts.slice(),tw:Math.round(TOWER.hp),
     e:ents.map(e=>{ const yw=e.isPlayer||e.remote?e.yaw:e.ai.aimYaw, pt=e.isPlayer||e.remote?e.pitch:e.ai.aimPitch;
-      return [r2(e.pos.x),r2(e.pos.y),r2(e.pos.z),r2(yw||0),r2(pt||0),e.crouch?1:0,e.alive?1:0,e.hid?1:0,Math.round(e.hp),e.guns[e.slot]?e.guns[e.slot].key:'',e.life||0]; }),
+      return [r2(e.pos.x),r2(e.pos.y),r2(e.pos.z),r2(yw||0),r2(pt||0),e.crouch?1:0,e.alive?1:0,e.hid?1:0,Math.round(e.hp),e.guns[e.slot]?e.guns[e.slot].key:'',e.life||0,e.spotT>gTime?1:0]; }),
     v:vehicles.map(v=>[r2(v.pos.x),r2(v.pos.y),r2(v.pos.z),r2(v.yaw),r2(v.pitchV||0),r2(v.turYaw),r2(v.turPitch),v.dead?1:0,Math.round(v.hp),v.driver?ents.indexOf(v.driver):-1,v.gunner?ents.indexOf(v.gunner):-1,v.burning?1:0]),
     tu:turrets.map(t=>[r2(t.yaw),r2(t.pitch),t.user?ents.indexOf(t.user):-1]),
     pr:projs.map(p=>[0,r2(p.pos.x),r2(p.pos.y),r2(p.pos.z),p.P.col||0x333333]).concat(nadesArr.map(n=>[1,r2(n.pos.x),r2(n.pos.y),r2(n.pos.z),n.kind==='smoke'?0x8f8c80:0x3c4630]),mines.map(m=>[2,r2(m.pos.x),r2(m.pos.y),r2(m.pos.z),m.team]))};
   if(gameMode==='conq') S.b=BASES.map(B=>[B.owner,r3(B.prog),B.n0||0,B.n1||0]);
-  if(slow){ S.sc=ents.map(e=>[e.kills,e.deaths,e.score]); S.pk=pickups.map(pk=>[r2(pk.x),r2(pk.y),r2(pk.z),pk.kind,pk.key||null,pk.alive?1:0,pk.drop?1:0]);
+  S.vip=VIP&&gameMode==='meta'?ents.indexOf(VIP):-1; S.dr=drones.filter(d=>!d.dead).map(d=>[r2(d.pos.x),r2(d.pos.y),r2(d.pos.z),r2(d.yaw),d.team,ents.indexOf(d.owner)]);
+  if(slow){ S.sc=ents.map(e=>[e.kills,e.deaths,e.score,e.gg||0]); S.pk=pickups.map(pk=>[r2(pk.x),r2(pk.y),r2(pk.z),pk.kind,pk.key||null,pk.alive?1:0,pk.drop?1:0]);
     S.cl=clouds.map(c=>[r2(c.pos.x),r2(c.pos.y),r2(c.pos.z),c.r,r2(c.t)]); S.at=r3(ATM.p); }
   const bk=[]; for(const [k,b] of NET.blkDirty) bk.push([k,b.alive?Math.round(b.hp):-1]); NET.blkDirty.clear(); S.bk=bk;
   const ev=NET.ev; NET.ev=[];
@@ -2756,7 +2911,7 @@ function netRoster(ro,you){ NET.myIdx=you; NET.flip=ro[you].t===1;
 function netApplyAtmo(a){ if(!a) return; ATM.time=a.time; ATM.weather=a.weather; ATM.p=a.p; rain.visible=a.weather==='rain';
   if(rain.visible) for(let i=0;i<RAIN_N;i++){ const x=rnd(-25,25), y=rnd(0,22), z=rnd(-25,25); rainPos.set([x,y,z,x,y+0.6,z],i*6); }
   rainGeo.attributes.position.needsUpdate=true; rainSound(a.weather==='rain'); applyAtmo(); }
-function netCliStart(d){ if(!Array.isArray(d.ro)||!d.ro[d.you]) return; gameMode=d.gm==='tdm'?'tdm':'conq'; netRoster(d.ro,d.you);
+function netCliStart(d){ if(!Array.isArray(d.ro)||!d.ro[d.you]) return; gameMode=['tdm','gun','meta','conq'].includes(d.gm)?d.gm:'conq'; netRoster(d.ro,d.you);
   NET.bm={}; player.life=-1; NET.respT=0; startGameO(); netApplyAtmo(d.at); player.alive=false; player.respawnT=99; $('death').hidden=true;
   $('againBtn').style.display='none'; $('netEndNote').hidden=false; }
 function netCliMsg(d){ if(!d||!d.t) return;
@@ -2771,6 +2926,8 @@ function netCliMsg(d){ if(!d||!d.t) return;
     case 'guns': if(Array.isArray(d.g)){ d.g.forEach((a,i)=>{ const W=WEAPONS[a[0]]; if(W) player.guns[i]={key:a[0],mag:a[1],magMax:W.mag,reserve:a[2],heat:0,att:player.guns[i]&&player.guns[i].key===a[0]?player.guns[i].att:'none'}; });
       player.slot=d.s?1:0; player.reloadT=0; player.swapT=0.4; player.charging=0; player.burstQ=0; player.spin=0; notice('UZEO SI: '+WEAPONS[curGun(player).key].name); sndClick(); } break;
     case 's': if(state==='play') netApply(d); break;
+    case 'gg': if(gameMode==='gun') ggSet(player,+d.v||0); break;
+    case 'dx': if(myDrone) endDrone(true); break;
     case 'end': if(state==='play'||state==='paused'){ $('pause').hidden=true; endRound(); } break;
     case 'bye': netLost('Domaćin je zatvorio sobu.'); break;
   } }
@@ -2786,12 +2943,14 @@ function netApply(S){
   if(S.ts) teamScore=sw(S.ts); if(S.cp) conqPts=sw(S.cp); if(S.rt!==undefined) roundTime=S.rt; if(S.tw!==undefined&&TOWER.alive) TOWER.hp=S.tw;
   if(S.e) S.e.forEach((a,i)=>{ const e=ents[i]; if(!e) return;
     if(e===player){ if(player.alive&&a[10]===player.life){ const hp=a[8]; if(hp<player.hp-0.5){ hurtFlash=Math.min(1,hurtFlash+(player.hp-hp)/45); if(player.hp-hp>3) vib(35); player.lastHurt=gTime; } player.hp=hp; } return; }
-    const was=e.alive; e.alive=!!a[6]; e.hid=!!a[7]; e.hp=a[8]; e.crouch=!!a[5];
+    e.spotT=a[11]?gTime+0.5:0; const was=e.alive; e.alive=!!a[6]; e.hid=!!a[7]; e.hp=a[8]; e.crouch=!!a[5];
     if(!e.nt) e.nt={x:a[0],y:a[1],z:a[2],yaw:a[3],pitch:a[4]}; else { e.nt.x=a[0]; e.nt.y=a[1]; e.nt.z=a[2]; e.nt.yaw=a[3]; e.nt.pitch=a[4]; }
     if(e.alive&&!was){ e.pos.set(a[0],a[1],a[2]); e.yaw=a[3]; e.ai.deadT=0; const m=e.model; m.g.visible=true; m.g.rotation.x=0; m.g.scale.set(1,1,1); }
     if(!e.alive&&was) e.ai.deadT=0;
     if(a[9]&&WEAPONS[a[9]]&&(!e.guns[0]||e.guns[0].key!==a[9]||e.slot)){ e.guns=[{key:a[9],mag:1,magMax:1,reserve:0,heat:0,att:'none'},{key:'pi',mag:1,magMax:1,reserve:0,heat:0,att:'none'}]; e.slot=0; botGunLook(e); } });
-  if(S.sc) S.sc.forEach((a,i)=>{ const e=ents[i]; if(e){ e.kills=a[0]; e.deaths=a[1]; e.score=a[2]; } });
+  if(S.sc) S.sc.forEach((a,i)=>{ const e=ents[i]; if(e){ e.kills=a[0]; e.deaths=a[1]; e.score=a[2]; if(gameMode==='gun'&&e===player&&(a[3]||0)!==(player.gg||0)) ggSet(player,a[3]||0); else e.gg=a[3]||0; } });
+  if(S.vip!==undefined){ const v=S.vip>=0?ents[S.vip]:null; if(v!==VIP) setVip(v); }
+  if(S.dr) NET.drList=S.dr.filter(d=>d[5]!==NET.myIdx);
   if(S.v){ for(const e of ents) if(e!==player){ e.veh=null; e.seat=null; }
     S.v.forEach((a,i)=>{ const v=vehicles[i]; if(!v) return; if(!a[7]&&v.dead){ resetVehicle(v); v.pos.set(a[0],a[1],a[2]); v.yaw=a[3]; }
       if(a[7]&&!v.dead){ v.dead=true; v.alive=false; v.m.g.visible=false; }
@@ -2834,7 +2993,7 @@ function netAnim(dt){ const k=Math.min(1,dt*12);
     ai.aimYaw=e.yaw; ai.aimPitch=e.pitch; const moved=Math.hypot(e.pos.x-ox,e.pos.z-oz); e.hv.set((e.pos.x-ox)/Math.max(dt,1e-3),(e.pos.z-oz)/Math.max(dt,1e-3));
     m.g.visible=!e.hid; m.g.position.copy(e.pos); m.g.rotation.set(0,e.yaw,0); m.upper.rotation.x=clamp(e.pitch,-0.6,0.6)*0.6;
     ai.walkPh=(ai.walkPh||0)+moved*4.2; const s=Math.sin(ai.walkPh)*Math.min(1,moved/Math.max(dt,1e-3)/4)*0.7; m.legs[0].rotation.x=s; m.legs[1].rotation.x=-s;
-    const cs=e.crouch?0.72:1; m.g.scale.y+=(cs-m.g.scale.y)*Math.min(1,dt*10); m.label.visible=e.team===player.team&&!e.hid; }
+    const cs=e.crouch?0.72:1; m.g.scale.y+=(cs-m.g.scale.y)*Math.min(1,dt*10); m.label.visible=(e.team===player.team||e.spotT>gTime||(e===VIP&&gameMode==='meta'))&&!e.hid; }
   for(const v of vehicles){ if(v.dead||!v.nt) continue; const a=v.nt;
     if(Math.hypot(a[0]-v.pos.x,a[2]-v.pos.z)>10) v.pos.set(a[0],a[1],a[2]); else { v.pos.x+=(a[0]-v.pos.x)*k; v.pos.y+=(a[1]-v.pos.y)*k; v.pos.z+=(a[2]-v.pos.z)*k; }
     v.yaw+=angDiff(a[3],v.yaw)*k; v.pitchV=a[4]; v.turYaw+=angDiff(a[5],v.turYaw)*k; v.turPitch=a[6];
@@ -2856,7 +3015,7 @@ NET.clientFrame=function(dt){
   processSupport();
   updatePlayer(dt);
   if(!player.alive&&player.respawnT<=0&&player.life!==-1&&gTime>NET.respT){ NET.respT=gTime+3; netSend({t:'resp',load:loadout,sc:netEncSC(spawnChoice)}); $('respawnTxt').textContent='Ulazim u borbu…'; }
-  netAnim(dt); updateTower(dt); updateNades(dt); updateBeacons();
+  netAnim(dt); updateMode(dt); netDronePool(); updateTower(dt); updateNades(dt); updateBeacons();
   netCliSend(dt);
   updateHud(dt); drawMinimap(dt);
 };
@@ -2880,6 +3039,7 @@ NET.build=function(p,piece,rot){ if(p.equip.n<=0) return false; const g=ghostBox
   const _dt=damageTower; damageTower=function(){ if(cli()) return; return _dt.apply(null,arguments); };
   const _dp=damageProp; damageProp=function(){ if(cli()) return; return _dp.apply(null,arguments); };
   const _dbc=damageBeacon; damageBeacon=function(){ if(cli()) return; return _dbc.apply(null,arguments); };
+  const _ddr=damageDrone; damageDrone=function(){ if(cli()) return; return _ddr.apply(null,arguments); };
   const _dbr=damageBlocksRadius; damageBlocksRadius=function(){ if(cli()) return; return _dbr.apply(null,arguments); };
   const _ke=killEnt; killEnt=function(t,att,label,head,isKs){ _ke(t,att,label,head,isKs); if(t.remote&&host()){ try{ t.remote.c.send({t:'dead',k:att?ents.indexOf(att):-1,l:label,life:t.life}); }catch(e){} } };
   const _tb=tintBlock; tintBlock=function(b){ _tb(b); if(host()&&b){ const k=bkey(b); if(k!==null) NET.blkDirty.set(k,b); } };
@@ -2936,7 +3096,7 @@ function frame(now){
     processSupport(); processNav(); processVNav();
     updatePlayer(dt);
     for(const e of ents) if(e.remote) NET.updRemote(e,dt); else if(!e.isPlayer) updateBot(e,dt);
-    separate(); updateVehicles(dt); updateTurrets(dt); updateNades(dt); updateProjs(dt); updateMines(dt); updateProps(dt); updateHeli(dt); updateTower(dt); updateBases(dt); updateBeacons(); updatePickups(dt);
+    separate(); updateMode(dt); updateDrones(dt); updateVehicles(dt); updateTurrets(dt); updateNades(dt); updateProjs(dt); updateMines(dt); updateProps(dt); updateHeli(dt); updateTower(dt); updateBases(dt); updateBeacons(); updatePickups(dt);
     if(ks.radarT>0) ks.radarT-=dt;
     if(plane&&plane.visible){ const u=plane.userData; u.t+=dt; plane.position.set(u.x+u.fx*u.t*95,34,u.z+u.fz*u.t*95); if(u.t>3) plane.visible=false; }
     updateHud(dt); drawMinimap(dt); NET.hostTick(dt);
